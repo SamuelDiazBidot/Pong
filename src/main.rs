@@ -47,12 +47,12 @@ struct Ball {
 }
 
 impl Ball {
-    fn new(x: f32, y: f32, dx: f32, dy: f32) -> Self {
+    fn new() -> Self {
         Ball {
-            x,
-            y,
-            dx,
-            dy,
+            x: 390.0,
+            y: 270.0,
+            dx: 0.0,
+            dy: 0.0,
         }
     }
     fn serve(&mut self) {
@@ -61,7 +61,7 @@ impl Ball {
     }
     fn reset(&mut self) {
         self.x = 390.0;
-        self.y = 300.0;
+        self.y = 270.0;
         self.dx = 0.0;
         self.dy = 0.0;
     }
@@ -74,14 +74,6 @@ impl Ball {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.x += self.dx;
         self.y += self.dy;
-        if self.y <= 0.0 {
-            self.dy = -self.dy;
-            self.play_sound(ctx);
-        }
-        if self.y >= 575.0 {
-            self.dy = -self.dy;
-            self.play_sound(ctx);
-        }
         if (input::keyboard::is_key_pressed(ctx, input::keyboard::KeyCode::Space)) && self.dx == 0.0 {
             self.serve();
         }
@@ -121,8 +113,8 @@ impl ScoreBoard {
         let font = graphics::Font::new(ctx, "/font.ttf")?;
         let player1_score = graphics::Text::new((self.player1.to_string(), font, 120.0));
         let player2_score = graphics::Text::new((self.player2.to_string(), font, 120.0));
-        graphics::draw(ctx, &player1_score, (mint::Point2{ x: 200.0, y: 220.0 }, graphics::WHITE),)?;
-        graphics::draw(ctx, &player2_score, (mint::Point2{ x: 530.0, y: 220.0 }, graphics::WHITE),)?;
+        graphics::draw(ctx, &player1_score, (mint::Point2{ x: 200.0, y: 230.0 }, graphics::WHITE),)?;
+        graphics::draw(ctx, &player2_score, (mint::Point2{ x: 540.0, y: 230.0 }, graphics::WHITE),)?;
         Ok(())
     }
 }
@@ -133,15 +125,17 @@ struct GameState {
     player2: Paddle,
     ball: Ball,
     score_board: ScoreBoard,
+    color: graphics::Color,
 }
 
 impl GameState {
     fn new() -> Self {
         GameState {
-            player1: Paddle::new(25.0, 150.0),
-            player2: Paddle::new(750.0, 150.0),
-            ball: Ball::new(390.0, 300.0, 0.0, 0.0),
+            player1: Paddle::new(25.0, 210.0),
+            player2: Paddle::new(750.0, 210.0),
+            ball: Ball::new(),
             score_board: ScoreBoard::new(),
+            color: rand_color(),
         }
     }
 }
@@ -151,12 +145,12 @@ impl ggez::event::EventHandler for GameState {
         self.player1.update(ctx, input::keyboard::KeyCode::W, input::keyboard::KeyCode::S)?;
         self.player2.update(ctx, input::keyboard::KeyCode::Up, input::keyboard::KeyCode::Down)?;
         self.ball.update(ctx)?;
-        collition(ctx, &mut self.ball, &mut self.player1, &mut self.player2);
+        collition(ctx, &mut self.color, &mut self.ball, &mut self.player1, &mut self.player2);
         scored(&mut self.ball, &mut self.score_board);
         Ok(())
     }
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, graphics::Color::new(0.42, 0.42, 0.42, 1.0));
+        graphics::clear(ctx, self.color);
         self.player1.draw(ctx)?;
         self.player2.draw(ctx)?;
         self.ball.draw(ctx)?;
@@ -173,14 +167,25 @@ fn main() {
     event::run(ctx, event_loop, state).unwrap();
 }
 
-fn collition(ctx: &mut Context, ball: &mut Ball, paddle1: &mut Paddle, paddle2: &mut Paddle) {
+fn collition(ctx: &mut Context, color: &mut graphics::Color, ball: &mut Ball, paddle1: &mut Paddle, paddle2: &mut Paddle) {
+    if ball.y <= 0.0 {
+        ball.dy = -ball.dy;
+        ball.play_sound(ctx).unwrap();
+    }
+    if ball.y >= 575.0 {
+        ball.dy = -ball.dy;
+        ball.play_sound(ctx).unwrap();
+    }
     if (ball.x == paddle1.x + 25.0) && (ball.y >= paddle1.y) && (ball.y <= paddle1.y + 150.0) {
         ball.dx = -ball.dx;
-        ball.play_sound(ctx);
+        ball.play_sound(ctx).unwrap();
+        *color = rand_color();
+
     }
     if (ball.x + 25.0 == paddle2.x) && (ball.y >= paddle2.y) && (ball.y <= paddle2.y + 150.0) {
         ball.dx = -ball.dx;
-        ball.play_sound(ctx);
+        ball.play_sound(ctx).unwrap();
+        *color = rand_color();
     }
 }
 
@@ -194,4 +199,12 @@ fn scored(ball: &mut Ball, score_board: &mut ScoreBoard) {
         score_board.player1_scored();
         ball.reset();
     }
+}
+
+fn rand_color() -> graphics::Color {
+    graphics::Color::new(
+        rand::thread_rng().gen_range(0.1, 0.75),
+        rand::thread_rng().gen_range(0.1, 0.75),
+        rand::thread_rng().gen_range(0.1,0.75),
+        1.0)
 }
